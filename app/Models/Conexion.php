@@ -15,11 +15,18 @@ class Conexion
         if (self::$conexion === null) {
             $env = self::cargarEnv();
 
-            $host = $env['DB_HOST'] ?? '127.0.0.1';
-            $port = $env['DB_PORT'] ?? '5432';
-            $database = $env['DB_DATABASE'] ?? 'sigie';
-            $username = $env['DB_USERNAME'] ?? 'postgres';
-            $password = $env['DB_PASSWORD'] ?? '';
+            /*
+             * Primero intenta leer variables reales del servidor:
+             * Render usa variables de entorno.
+             *
+             * Si no existen, lee el archivo .env local.
+             * Si tampoco existen, usa valores por defecto locales.
+             */
+            $host = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? '127.0.0.1');
+            $port = getenv('DB_PORT') ?: ($env['DB_PORT'] ?? '5432');
+            $database = getenv('DB_DATABASE') ?: ($env['DB_DATABASE'] ?? 'sigie');
+            $username = getenv('DB_USERNAME') ?: ($env['DB_USERNAME'] ?? 'postgres');
+            $password = getenv('DB_PASSWORD') ?: ($env['DB_PASSWORD'] ?? '');
 
             $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
 
