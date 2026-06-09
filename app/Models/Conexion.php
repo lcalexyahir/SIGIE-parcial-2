@@ -16,17 +16,32 @@ class Conexion
             $env = self::cargarEnv();
 
             /*
-             * Primero intenta leer variables reales del servidor:
-             * Render usa variables de entorno.
-             *
-             * Si no existen, lee el archivo .env local.
-             * Si tampoco existen, usa valores por defecto locales.
+             * Orden de lectura:
+             * 1. Variables DB_ para Render/Railway configuradas manualmente.
+             * 2. Variables PG_ propias de Railway.
+             * 3. Archivo .env local.
+             * 4. Valores locales por defecto.
              */
-            $host = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? '127.0.0.1');
-            $port = getenv('DB_PORT') ?: ($env['DB_PORT'] ?? '5432');
-            $database = getenv('DB_DATABASE') ?: ($env['DB_DATABASE'] ?? 'sigie');
-            $username = getenv('DB_USERNAME') ?: ($env['DB_USERNAME'] ?? 'postgres');
-            $password = getenv('DB_PASSWORD') ?: ($env['DB_PASSWORD'] ?? '');
+
+            $host = getenv('DB_HOST')
+                ?: getenv('PGHOST')
+                ?: ($env['DB_HOST'] ?? '127.0.0.1');
+
+            $port = getenv('DB_PORT')
+                ?: getenv('PGPORT')
+                ?: ($env['DB_PORT'] ?? '5432');
+
+            $database = getenv('DB_DATABASE')
+                ?: getenv('PGDATABASE')
+                ?: ($env['DB_DATABASE'] ?? 'sigie');
+
+            $username = getenv('DB_USERNAME')
+                ?: getenv('PGUSER')
+                ?: ($env['DB_USERNAME'] ?? 'postgres');
+
+            $password = getenv('DB_PASSWORD')
+                ?: getenv('PGPASSWORD')
+                ?: ($env['DB_PASSWORD'] ?? '');
 
             $dsn = "pgsql:host={$host};port={$port};dbname={$database}";
 
