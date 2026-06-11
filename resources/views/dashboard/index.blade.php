@@ -430,7 +430,7 @@
                  alt="FICCT" class="topbar-logo"
                  onerror="this.style.display='none'">
             <div>
-                <div class="topbar-name">SIGIE</div>
+                <div class="topbar-name">SIGAUCP</div>
                 <div class="topbar-sub">FICCT · UAGRM</div>
             </div>
         </div>
@@ -451,7 +451,7 @@
             <div class="dash-hero-inner">
                 <div class="hero-left">
                     <h2>Panel <span>Principal</span></h2>
-                    <p>Sistema de Gestion de Informacion Estudiantil y Admisiones — SIGIE</p>
+                    <p>Sistema de Gestion de Informacion Estudiantil y Admisiones — SIGAUCP</p>
                 </div>
                 <div class="hero-badge">Dashboard</div>
             </div>
@@ -510,11 +510,11 @@
                     <div class="info-card-title">
                         Bienvenido, <?= e($_SESSION['usuario']['nombre_completo'] ?? 'Usuario') ?>
                     </div>
-                    <div class="info-card-sub">SIGIE</div>
+                    <div class="info-card-sub">SIGAUCP</div>
                 </div>
             </div>
             <div class="gold-rule"></div>
-            <p>Este es el panel principal del sistema SIGIE.</p>
+            <p>Este es el panel principal del sistema SIGAUCP.</p>
             <p>Casos de uso activos:</p>
             <div class="modules-list">
                 <span class="module-chip">🔑 Login / Logout</span>

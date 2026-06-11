@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Documento;
+use App\Models\PeriodoAcademico;
 
 class DocumentoController
 {
@@ -11,11 +12,24 @@ class DocumentoController
         \require_login();
 
         try {
-            $postulantes = Documento::obtenerResumenPostulantes();
+            $periodos = PeriodoAcademico::obtenerTodos();
+            $periodoActivo = PeriodoAcademico::obtenerActivo();
+
+            $periodoId = (int)($_GET['periodo_id'] ?? 0);
+            $buscar = trim($_GET['buscar'] ?? '');
+
+            if ($periodoId <= 0 && $periodoActivo) {
+                $periodoId = (int)$periodoActivo['id'];
+            }
+
+            $postulantes = Documento::obtenerResumenPostulantes($periodoId, $buscar);
 
             \view('documentos.index', [
                 'titulo' => 'Requisitos de Inscripción - SIGIE',
                 'postulantes' => $postulantes,
+                'periodos' => $periodos,
+                'periodoId' => $periodoId,
+                'buscar' => $buscar,
             ]);
         } catch (\Throwable $e) {
             \set_flash('error', 'Error al listar requisitos: ' . $e->getMessage());
@@ -23,6 +37,9 @@ class DocumentoController
             \view('documentos.index', [
                 'titulo' => 'Requisitos de Inscripción - SIGIE',
                 'postulantes' => [],
+                'periodos' => [],
+                'periodoId' => 0,
+                'buscar' => '',
             ]);
         }
     }

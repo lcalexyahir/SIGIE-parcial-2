@@ -14,19 +14,51 @@ class Documento
         return Conexion::getConexion();
     }
 
-    public static function obtenerResumenPostulantes()
+    public static function obtenerResumenPostulantes($periodoId = null, $buscar = '')
     {
+        $where = [];
+        $params = [];
+
+        if (!empty($periodoId)) {
+            $where[] = 'po.periodo_id = :periodo_id';
+            $params[':periodo_id'] = (int)$periodoId;
+        }
+
+        $buscar = trim((string)$buscar);
+
+        if ($buscar !== '') {
+            $where[] = "(
+                LOWER(pe.ci) LIKE LOWER(:buscar)
+                OR LOWER(pe.nombres) LIKE LOWER(:buscar)
+                OR LOWER(pe.apellidos) LIKE LOWER(:buscar)
+                OR LOWER(CONCAT(pe.nombres, ' ', pe.apellidos)) LIKE LOWER(:buscar)
+                OR LOWER(po.codigo) LIKE LOWER(:buscar)
+            )";
+
+            $params[':buscar'] = '%' . $buscar . '%';
+        }
+
+        $whereSql = '';
+
+        if (!empty($where)) {
+            $whereSql = 'WHERE ' . implode(' AND ', $where);
+        }
+
         $sql = "
             SELECT
                 po.id AS postulante_id,
                 po.codigo AS codigo_postulante,
                 po.estado_postulacion,
                 po.fecha_registro,
+                po.periodo_id,
                 pe.ci,
                 pe.nombres,
                 pe.apellidos,
                 c1.nombre AS carrera_principal,
                 c2.nombre AS carrera_secundaria,
+                pa.codigo AS periodo_codigo,
+                pa.gestion,
+                pa.semestre,
                 COUNT(d.id) AS total_requisitos,
                 COALESCE(SUM(CASE WHEN d.estado_validacion = 'Aceptado' THEN 1 ELSE 0 END), 0) AS requisitos_aceptados,
                 COALESCE(SUM(CASE WHEN d.estado_validacion = 'Pendiente' THEN 1 ELSE 0 END), 0) AS requisitos_pendientes,
@@ -35,21 +67,28 @@ class Documento
             INNER JOIN persona pe ON pe.id = po.persona_id
             LEFT JOIN carrera c1 ON c1.id = po.carrera_principal_id
             LEFT JOIN carrera c2 ON c2.id = po.carrera_secundaria_id
+            LEFT JOIN periodo_academico pa ON pa.id = po.periodo_id
             LEFT JOIN documento d ON d.postulante_id = po.id
+            {$whereSql}
             GROUP BY
                 po.id,
                 po.codigo,
                 po.estado_postulacion,
                 po.fecha_registro,
+                po.periodo_id,
                 pe.ci,
                 pe.nombres,
                 pe.apellidos,
                 c1.nombre,
-                c2.nombre
+                c2.nombre,
+                pa.codigo,
+                pa.gestion,
+                pa.semestre
             ORDER BY po.id ASC
         ";
 
-        $stmt = self::db()->query($sql);
+        $stmt = self::db()->prepare($sql);
+        $stmt->execute($params);
 
         return $stmt->fetchAll();
     }
@@ -65,6 +104,7 @@ class Documento
                 po.colegio,
                 po.ciudad,
                 po.titulo_bachiller,
+                po.periodo_id,
                 pe.ci,
                 pe.nombres,
                 pe.apellidos,
@@ -72,11 +112,15 @@ class Documento
                 pe.telefono,
                 pe.direccion,
                 c1.nombre AS carrera_principal,
-                c2.nombre AS carrera_secundaria
+                c2.nombre AS carrera_secundaria,
+                pa.codigo AS periodo_codigo,
+                pa.gestion,
+                pa.semestre
             FROM postulante po
             INNER JOIN persona pe ON pe.id = po.persona_id
             LEFT JOIN carrera c1 ON c1.id = po.carrera_principal_id
             LEFT JOIN carrera c2 ON c2.id = po.carrera_secundaria_id
+            LEFT JOIN periodo_academico pa ON pa.id = po.periodo_id
             WHERE po.id = :postulante_id
             LIMIT 1
         ";

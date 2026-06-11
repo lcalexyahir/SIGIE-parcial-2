@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pago;
+use App\Models\PeriodoAcademico;
 
 class PagoController
 {
@@ -11,12 +12,27 @@ class PagoController
         \require_login();
 
         try {
-            $postulantes = Pago::obtenerResumenPostulantes();
+            $periodos = PeriodoAcademico::obtenerTodos();
+            $periodoActivo = PeriodoAcademico::obtenerActivo();
+
+            $periodoId = (int)($_GET['periodo_id'] ?? 0);
+            $estadoCuenta = trim($_GET['estado_cuenta'] ?? '');
+            $buscar = trim($_GET['buscar'] ?? '');
+
+            if ($periodoId <= 0 && $periodoActivo) {
+                $periodoId = (int)$periodoActivo['id'];
+            }
+
+            $postulantes = Pago::obtenerResumenPostulantes($periodoId, $estadoCuenta, $buscar);
 
             \view('pagos.index', [
                 'titulo' => 'Pagos - SIGIE',
                 'postulantes' => $postulantes,
                 'montoOficial' => Pago::MONTO_OFICIAL_CUP,
+                'periodos' => $periodos,
+                'periodoId' => $periodoId,
+                'estadoCuenta' => $estadoCuenta,
+                'buscar' => $buscar,
             ]);
         } catch (\Throwable $e) {
             \set_flash('error', 'Error al listar pagos: ' . $e->getMessage());
@@ -25,6 +41,10 @@ class PagoController
                 'titulo' => 'Pagos - SIGIE',
                 'postulantes' => [],
                 'montoOficial' => Pago::MONTO_OFICIAL_CUP,
+                'periodos' => [],
+                'periodoId' => 0,
+                'estadoCuenta' => '',
+                'buscar' => '',
             ]);
         }
     }

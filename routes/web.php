@@ -279,6 +279,7 @@ $routes = [
         '/inscripciones/show' => [\App\Http\Controllers\InscripcionController::class, 'show'],
 
         '/grupos-academicos' => [\App\Http\Controllers\GrupoAcademicoController::class, 'index'],
+        '/grupos-academicos/create' => [\App\Http\Controllers\GrupoAcademicoController::class, 'create'],
 
         '/resultados' => [\App\Http\Controllers\ResultadoFinalController::class, 'index'],
         '/resultados/show' => [\App\Http\Controllers\ResultadoFinalController::class, 'show'],
@@ -320,6 +321,7 @@ $routes = [
 
         '/inscripciones/store' => [\App\Http\Controllers\InscripcionController::class, 'store'],
 
+        '/grupos-academicos/store' => [\App\Http\Controllers\GrupoAcademicoController::class, 'store'],
         '/grupos-academicos/recalcular' => [\App\Http\Controllers\GrupoAcademicoController::class, 'recalcular'],
         '/grupos-academicos/cambiar-estado' => [\App\Http\Controllers\GrupoAcademicoController::class, 'cambiarEstado'],
 

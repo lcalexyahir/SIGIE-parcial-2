@@ -11,6 +11,7 @@ require_once __DIR__ . '/PeriodoAcademico.php';
 class ResultadoFinal
 {
     public const NOTA_MINIMA_APROBACION = 60.00;
+    public const TOTAL_MATERIAS_CUP = 4;
 
     private static function db()
     {
@@ -59,7 +60,7 @@ class ResultadoFinal
             ORDER BY
                 CASE rf.estado_final
                     WHEN 'ADMITIDO' THEN 1
-                    WHEN 'NO ADMITIDO' THEN 2
+                    WHEN 'APROBADO SIN CUPO' THEN 2
                     WHEN 'REPROBADO' THEN 3
                     ELSE 4
                 END,
@@ -125,7 +126,7 @@ class ResultadoFinal
             SELECT
                 COUNT(*) AS total_resultados,
                 COALESCE(SUM(CASE WHEN estado_final = 'ADMITIDO' THEN 1 ELSE 0 END), 0) AS total_admitidos,
-                COALESCE(SUM(CASE WHEN estado_final = 'NO ADMITIDO' THEN 1 ELSE 0 END), 0) AS total_no_admitidos,
+                COALESCE(SUM(CASE WHEN estado_final = 'APROBADO SIN CUPO' THEN 1 ELSE 0 END), 0) AS total_no_admitidos,
                 COALESCE(SUM(CASE WHEN estado_final = 'REPROBADO' THEN 1 ELSE 0 END), 0) AS total_reprobados,
                 COALESCE(ROUND(AVG(promedio_general), 2), 0) AS promedio_general
             FROM resultado_final
@@ -199,13 +200,23 @@ class ResultadoFinal
                 $promedio = round((float)$postulante['promedio_general'], 2);
                 $carreraPrincipalId = (int)$postulante['carrera_principal_id'];
                 $carreraSecundariaId = (int)$postulante['carrera_secundaria_id'];
+                $materiasReprobadas = (int)($postulante['materias_reprobadas'] ?? 0);
+                $detalleMateriasReprobadas = trim((string)($postulante['detalle_materias_reprobadas'] ?? ''));
 
                 $estadoFinal = 'REPROBADO';
                 $carreraAdmitidaId = null;
                 $opcionAdmitida = null;
                 $observacion = 'No alcanzó la nota mínima de aprobación.';
 
-                if ($promedio >= self::NOTA_MINIMA_APROBACION) {
+                if ($promedio < self::NOTA_MINIMA_APROBACION) {
+                    $estadoFinal = 'REPROBADO';
+                    $observacion = 'Promedio general menor a 60.';
+                    $totalReprobados++;
+                } elseif ($materiasReprobadas > 0) {
+                    $estadoFinal = 'REPROBADO';
+                    $observacion = 'Reprobó por materia con nota menor a 60: ' . $detalleMateriasReprobadas . '.';
+                    $totalReprobados++;
+                } else {
                     if (!empty($cuposDisponibles[$carreraPrincipalId]) && $cuposDisponibles[$carreraPrincipalId] > 0) {
                         $estadoFinal = 'ADMITIDO';
                         $carreraAdmitidaId = $carreraPrincipalId;
@@ -221,12 +232,10 @@ class ResultadoFinal
                         $cuposDisponibles[$carreraSecundariaId]--;
                         $totalAdmitidos++;
                     } else {
-                        $estadoFinal = 'NO ADMITIDO';
-                        $observacion = 'Aprobó la nota mínima, pero no alcanzó cupo en ninguna de sus dos opciones.';
+                        $estadoFinal = 'APROBADO SIN CUPO';
+                        $observacion = 'Aprobó el promedio general y todas las materias, pero no alcanzó cupo en ninguna de sus dos opciones.';
                         $totalNoAdmitidos++;
                     }
-                } else {
-                    $totalReprobados++;
                 }
 
                 self::insertarResultadoEnTransaccion(
@@ -297,27 +306,59 @@ class ResultadoFinal
     private static function obtenerPostulantesConPromedioEnTransaccion($periodoId, $db)
     {
         $sql = "
+            WITH promedios_materia AS (
+                SELECT
+                    po.id AS postulante_id,
+                    po.carrera_principal_id,
+                    po.carrera_secundaria_id,
+                    m.id AS materia_id,
+                    m.nombre AS materia_nombre,
+                    ROUND(SUM(n.nota * (e.porcentaje / 100.0))::numeric, 2) AS promedio_materia
+                FROM postulante po
+                INNER JOIN nota n ON n.postulante_id = po.id
+                INNER JOIN examen e ON e.id = n.examen_id
+                INNER JOIN materia m ON m.id = e.materia_id
+                WHERE po.periodo_id = :periodo_id
+                  AND e.periodo_id = :periodo_id
+                GROUP BY
+                    po.id,
+                    po.carrera_principal_id,
+                    po.carrera_secundaria_id,
+                    m.id,
+                    m.nombre
+            )
             SELECT
-                po.id AS postulante_id,
-                po.carrera_principal_id,
-                po.carrera_secundaria_id,
-                ROUND(SUM(n.nota * (e.porcentaje / 100.0))::numeric, 2) AS promedio_general,
-                COUNT(n.id) AS total_notas
-            FROM postulante po
-            INNER JOIN nota n ON n.postulante_id = po.id
-            INNER JOIN examen e ON e.id = n.examen_id
-            WHERE po.periodo_id = :periodo_id
-              AND e.periodo_id = :periodo_id
+                postulante_id,
+                carrera_principal_id,
+                carrera_secundaria_id,
+                ROUND(AVG(promedio_materia)::numeric, 2) AS promedio_general,
+                COUNT(materia_id) AS total_materias,
+                COALESCE(SUM(CASE WHEN promedio_materia < :nota_minima THEN 1 ELSE 0 END), 0) AS materias_reprobadas,
+                COALESCE(
+                    string_agg(
+                        CASE
+                            WHEN promedio_materia < :nota_minima
+                            THEN materia_nombre || ' (' || promedio_materia::text || ')'
+                            ELSE NULL
+                        END,
+                        ', '
+                        ORDER BY materia_nombre
+                    ),
+                    ''
+                ) AS detalle_materias_reprobadas
+            FROM promedios_materia
             GROUP BY
-                po.id,
-                po.carrera_principal_id,
-                po.carrera_secundaria_id
-            HAVING COUNT(n.id) >= 3
-            ORDER BY promedio_general DESC, po.id ASC
+                postulante_id,
+                carrera_principal_id,
+                carrera_secundaria_id
+            HAVING COUNT(materia_id) >= :total_materias
+            ORDER BY promedio_general DESC, postulante_id ASC
         ";
 
         $stmt = $db->prepare($sql);
         $stmt->bindValue(':periodo_id', (int)$periodoId, PDO::PARAM_INT);
+        $stmt->bindValue(':nota_minima', self::NOTA_MINIMA_APROBACION);
+        $stmt->bindValue(':total_materias', self::TOTAL_MATERIAS_CUP, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll();
@@ -353,6 +394,7 @@ class ResultadoFinal
         ";
 
         $stmt = $db->prepare($sql);
+
         return $stmt->execute([
             ':postulante_id' => (int)$postulanteId,
             ':promedio_general' => (float)$promedio,
@@ -370,8 +412,8 @@ class ResultadoFinal
 
         if ($estadoFinal === 'ADMITIDO') {
             $estadoPostulacion = 'Admitido';
-        } elseif ($estadoFinal === 'NO ADMITIDO') {
-            $estadoPostulacion = 'No admitido';
+        } elseif ($estadoFinal === 'APROBADO SIN CUPO') {
+            $estadoPostulacion = 'Aprobado sin cupo';
         } elseif ($estadoFinal === 'REPROBADO') {
             $estadoPostulacion = 'Reprobado';
         }
@@ -385,6 +427,7 @@ class ResultadoFinal
         ";
 
         $stmt = $db->prepare($sql);
+
         return $stmt->execute([
             ':estado_postulacion' => $estadoPostulacion,
             ':id' => (int)$postulanteId,

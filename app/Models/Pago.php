@@ -16,19 +16,67 @@ class Pago
         return Conexion::getConexion();
     }
 
-    public static function obtenerResumenPostulantes()
+    public static function obtenerResumenPostulantes($periodoId = null, $estadoCuenta = '', $buscar = '')
     {
+        $where = [];
+        $params = [
+            ':monto_oficial' => self::MONTO_OFICIAL_CUP,
+        ];
+
+        if (!empty($periodoId)) {
+            $where[] = 'po.periodo_id = :periodo_id';
+            $params[':periodo_id'] = (int)$periodoId;
+        }
+
+        $buscar = trim((string)$buscar);
+
+        if ($buscar !== '') {
+            $where[] = "(
+                LOWER(pe.ci) LIKE LOWER(:buscar)
+                OR LOWER(pe.nombres) LIKE LOWER(:buscar)
+                OR LOWER(pe.apellidos) LIKE LOWER(:buscar)
+                OR LOWER(CONCAT(pe.nombres, ' ', pe.apellidos)) LIKE LOWER(:buscar)
+                OR LOWER(po.codigo) LIKE LOWER(:buscar)
+            )";
+            $params[':buscar'] = '%' . $buscar . '%';
+        }
+
+        $estadoCuenta = trim((string)$estadoCuenta);
+
+        if ($estadoCuenta !== '') {
+            $where[] = "COALESCE(
+                cc.estado,
+                CASE
+                    WHEN COALESCE(pg.total_pagado_aceptado, 0) >= :monto_oficial THEN 'Pagado'
+                    WHEN COALESCE(pg.total_pagado_aceptado, 0) > 0 THEN 'Parcial'
+                    ELSE 'Pendiente'
+                END
+            ) = :estado_cuenta";
+
+            $params[':estado_cuenta'] = $estadoCuenta;
+        }
+
+        $whereSql = '';
+
+        if (!empty($where)) {
+            $whereSql = 'WHERE ' . implode(' AND ', $where);
+        }
+
         $sql = "
             SELECT
                 po.id AS postulante_id,
                 po.codigo AS codigo_postulante,
                 po.estado_postulacion,
                 po.fecha_registro,
+                po.periodo_id,
                 pe.ci,
                 pe.nombres,
                 pe.apellidos,
                 c1.nombre AS carrera_principal,
                 c2.nombre AS carrera_secundaria,
+                pa.codigo AS periodo_codigo,
+                pa.gestion,
+                pa.semestre,
 
                 cc.id AS cuenta_id,
                 COALESCE(pg.total_pagado_aceptado, 0) AS total_pagado_aceptado,
@@ -55,6 +103,7 @@ class Pago
             INNER JOIN persona pe ON pe.id = po.persona_id
             LEFT JOIN carrera c1 ON c1.id = po.carrera_principal_id
             LEFT JOIN carrera c2 ON c2.id = po.carrera_secundaria_id
+            LEFT JOIN periodo_academico pa ON pa.id = po.periodo_id
             LEFT JOIN cuenta_cobrar cc ON cc.postulante_id = po.id
             LEFT JOIN (
                 SELECT
@@ -67,13 +116,12 @@ class Pago
                 FROM pago
                 GROUP BY postulante_id
             ) pg ON pg.postulante_id = po.id
+            {$whereSql}
             ORDER BY po.id ASC
         ";
 
         $stmt = self::db()->prepare($sql);
-        $stmt->execute([
-            ':monto_oficial' => self::MONTO_OFICIAL_CUP,
-        ]);
+        $stmt->execute($params);
 
         return $stmt->fetchAll();
     }
@@ -87,10 +135,12 @@ class Pago
                 pe.ci,
                 pe.nombres,
                 pe.apellidos,
-                c1.nombre AS carrera_principal
+                c1.nombre AS carrera_principal,
+                pa.codigo AS periodo_codigo
             FROM postulante po
             INNER JOIN persona pe ON pe.id = po.persona_id
             LEFT JOIN carrera c1 ON c1.id = po.carrera_principal_id
+            LEFT JOIN periodo_academico pa ON pa.id = po.periodo_id
             ORDER BY po.id ASC
         ";
 
@@ -107,6 +157,7 @@ class Pago
                 po.codigo,
                 po.estado_postulacion,
                 po.fecha_registro,
+                po.periodo_id,
                 pe.ci,
                 pe.nombres,
                 pe.apellidos,
@@ -114,6 +165,9 @@ class Pago
                 pe.telefono,
                 c1.nombre AS carrera_principal,
                 c2.nombre AS carrera_secundaria,
+                pa.codigo AS periodo_codigo,
+                pa.gestion,
+                pa.semestre,
 
                 cc.id AS cuenta_id,
                 cc.fecha_vencimiento,
@@ -137,6 +191,7 @@ class Pago
             INNER JOIN persona pe ON pe.id = po.persona_id
             LEFT JOIN carrera c1 ON c1.id = po.carrera_principal_id
             LEFT JOIN carrera c2 ON c2.id = po.carrera_secundaria_id
+            LEFT JOIN periodo_academico pa ON pa.id = po.periodo_id
             LEFT JOIN cuenta_cobrar cc ON cc.postulante_id = po.id
             LEFT JOIN (
                 SELECT

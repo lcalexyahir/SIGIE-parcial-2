@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Inscripcion;
+use App\Models\PeriodoAcademico;
 
 class InscripcionController
 {
@@ -11,13 +12,24 @@ class InscripcionController
         \require_login();
 
         try {
-            $postulantes = Inscripcion::obtenerResumenPostulantes();
-            $grupos = Inscripcion::obtenerTodosGrupos();
+            $periodos = PeriodoAcademico::obtenerTodos();
+            $periodoActivo = PeriodoAcademico::obtenerActivo();
+
+            $periodoId = (int)($_GET['periodo_id'] ?? 0);
+            $buscar = trim($_GET['buscar'] ?? '');
+
+            if ($periodoId <= 0 && $periodoActivo) {
+                $periodoId = (int)$periodoActivo['id'];
+            }
+
+            $postulantes = Inscripcion::obtenerResumenPostulantes($periodoId, $buscar);
 
             \view('inscripciones.index', [
                 'titulo' => 'Inscripciones - SIGIE',
                 'postulantes' => $postulantes,
-                'grupos' => $grupos,
+                'periodos' => $periodos,
+                'periodoId' => $periodoId,
+                'buscar' => $buscar,
             ]);
         } catch (\Throwable $e) {
             \set_flash('error', 'Error al listar inscripciones: ' . $e->getMessage());
@@ -25,7 +37,9 @@ class InscripcionController
             \view('inscripciones.index', [
                 'titulo' => 'Inscripciones - SIGIE',
                 'postulantes' => [],
-                'grupos' => [],
+                'periodos' => [],
+                'periodoId' => 0,
+                'buscar' => '',
             ]);
         }
     }

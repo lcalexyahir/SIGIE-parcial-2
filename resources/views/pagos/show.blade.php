@@ -1,85 +1,60 @@
 <?php $titulo = 'Detalle de Pagos - SIGIE'; ?>
 
-<?php
-$estadoCuenta = $postulante['estado_cuenta'] ?? 'Pendiente';
-$badgeCuenta = 'bg-secondary';
-
-if ($estadoCuenta === 'Pagado') {
-    $badgeCuenta = 'bg-success';
-} elseif ($estadoCuenta === 'Parcial') {
-    $badgeCuenta = 'bg-warning text-dark';
-} elseif ($estadoCuenta === 'Pendiente') {
-    $badgeCuenta = 'bg-danger';
-}
-?>
-
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h2 class="mb-1">Detalle financiero</h2>
-        <p class="text-muted mb-0">Pagos registrados y cuenta por cobrar del postulante</p>
+        <h2 class="mb-1">Detalle de pagos</h2>
+        <p class="text-muted mb-0">
+            Historial financiero del postulante y validación de pagos.
+        </p>
     </div>
 
-    <div>
-        <a
-            href="<?= e(url('/pagos/create') . '&postulante_id=' . $postulante['id']) ?>"
-            class="btn btn-primary"
-        >
-            Registrar pago
-        </a>
-
-        <a href="<?= e(url('/pagos')) ?>" class="btn btn-secondary">
-            Volver
-        </a>
-    </div>
+    <a href="<?= e(url('/pagos')) ?>" class="btn btn-secondary">
+        Volver
+    </a>
 </div>
 
-<div class="card mb-4">
+<div class="card shadow-sm mb-4">
     <div class="card-header">
-        Información del postulante
+        Datos del postulante
     </div>
 
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-3">
-                <strong>Código:</strong><br>
-                <?= e($postulante['codigo']) ?>
-            </div>
-
-            <div class="col-md-3">
-                <strong>CI:</strong><br>
-                <?= e($postulante['ci']) ?>
-            </div>
-
-            <div class="col-md-6">
-                <strong>Nombre completo:</strong><br>
-                <?= e(trim(($postulante['nombres'] ?? '') . ' ' . ($postulante['apellidos'] ?? ''))) ?>
-            </div>
-
-            <div class="col-md-6">
-                <strong>Carrera principal:</strong><br>
-                <?= e($postulante['carrera_principal'] ?: '-') ?>
-            </div>
-
-            <div class="col-md-6">
-                <strong>Carrera secundaria:</strong><br>
-                <?= e($postulante['carrera_secundaria'] ?: '-') ?>
+            <div class="col-md-4">
+                <strong>Código:</strong>
+                <div><?= e($postulante['codigo']) ?></div>
             </div>
 
             <div class="col-md-4">
-                <strong>Estado postulación:</strong><br>
-                <span class="badge bg-primary">
-                    <?= e($postulante['estado_postulacion']) ?>
-                </span>
+                <strong>CI:</strong>
+                <div><?= e($postulante['ci']) ?></div>
             </div>
 
             <div class="col-md-4">
-                <strong>Email:</strong><br>
-                <?= e($postulante['email'] ?: '-') ?>
+                <strong>Postulante:</strong>
+                <div><?= e(trim(($postulante['nombres'] ?? '') . ' ' . ($postulante['apellidos'] ?? ''))) ?></div>
             </div>
 
             <div class="col-md-4">
-                <strong>Teléfono:</strong><br>
-                <?= e($postulante['telefono'] ?: '-') ?>
+                <strong>Gestión:</strong>
+                <div>
+                    <?= e($postulante['periodo_codigo'] ?? '-') ?>
+                    <?php if (!empty($postulante['gestion'])): ?>
+                        <span class="text-muted">
+                            <?= e($postulante['gestion']) ?>/<?= e($postulante['semestre']) ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Carrera principal:</strong>
+                <div><?= e($postulante['carrera_principal'] ?? '-') ?></div>
+            </div>
+
+            <div class="col-md-4">
+                <strong>Carrera secundaria:</strong>
+                <div><?= e($postulante['carrera_secundaria'] ?? '-') ?></div>
             </div>
         </div>
     </div>
@@ -87,153 +62,168 @@ if ($estadoCuenta === 'Pagado') {
 
 <div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
+        <div class="card shadow-sm border-primary">
             <div class="card-body">
-                <h6 class="text-muted mb-1">Monto oficial CUP</h6>
-                <h3 class="mb-0">
-                    Bs <?= e(number_format((float)$montoOficial, 2, ',', '.')) ?>
-                </h3>
+                <div class="text-muted small">Monto oficial CUP</div>
+                <h4><?= e(number_format((float)$montoOficial, 2, ',', '.')) ?> Bs</h4>
             </div>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
+        <div class="card shadow-sm border-success">
             <div class="card-body">
-                <h6 class="text-muted mb-1">Total aceptado</h6>
-                <h3 class="mb-0 text-success">
-                    Bs <?= e(number_format((float)($postulante['total_pagado_aceptado'] ?? 0), 2, ',', '.')) ?>
-                </h3>
+                <div class="text-muted small">Total pagado aceptado</div>
+                <h4><?= e(number_format((float)($postulante['total_pagado_aceptado'] ?? 0), 2, ',', '.')) ?> Bs</h4>
             </div>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
+        <div class="card shadow-sm border-warning">
             <div class="card-body">
-                <h6 class="text-muted mb-1">Saldo pendiente</h6>
-                <h3 class="mb-0 text-danger">
-                    Bs <?= e(number_format((float)($postulante['saldo'] ?? $montoOficial), 2, ',', '.')) ?>
-                </h3>
+                <div class="text-muted small">Saldo</div>
+                <h4><?= e(number_format((float)($postulante['saldo'] ?? 0), 2, ',', '.')) ?> Bs</h4>
             </div>
         </div>
     </div>
 
     <div class="col-md-3">
-        <div class="card border-0 shadow-sm">
+        <div class="card shadow-sm border-info">
             <div class="card-body">
-                <h6 class="text-muted mb-1">Estado cuenta</h6>
-                <h3 class="mb-0">
-                    <span class="badge <?= e($badgeCuenta) ?>">
-                        <?= e($estadoCuenta) ?>
-                    </span>
-                </h3>
+                <div class="text-muted small">Estado cuenta</div>
+
+                <?php $estadoCuenta = trim((string)($postulante['estado_cuenta'] ?? 'Pendiente')); ?>
+
+                <?php if ($estadoCuenta === 'Pagado'): ?>
+                    <h4><span class="badge bg-success">Pagado</span></h4>
+                <?php elseif ($estadoCuenta === 'Parcial'): ?>
+                    <h4><span class="badge bg-warning text-dark">Parcial</span></h4>
+                <?php else: ?>
+                    <h4><span class="badge bg-danger">Pendiente</span></h4>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
 
-<?php if ($estadoCuenta === 'Pagado'): ?>
-    <div class="alert alert-success">
-        El postulante tiene el pago completo del CUP. Puede continuar con la convalidación e inscripción.
-    </div>
-<?php elseif ($estadoCuenta === 'Parcial'): ?>
-    <div class="alert alert-warning">
-        El postulante tiene pagos aceptados, pero todavía mantiene saldo pendiente.
-    </div>
-<?php else: ?>
-    <div class="alert alert-danger">
-        El postulante aún no tiene pago aceptado o mantiene la cuenta pendiente.
-    </div>
-<?php endif; ?>
+<div class="mb-4 d-flex gap-2">
+    <a href="<?= e(url('/pagos/create') . '&postulante_id=' . $postulante['id']) ?>" class="btn btn-primary">
+        Registrar nuevo pago
+    </a>
 
-<div class="card">
+    <?php if (empty($postulante['cuenta_id'])): ?>
+        <form action="<?= e(url('/pagos/generar-cuenta')) ?>" method="POST">
+            <input type="hidden" name="postulante_id" value="<?= e($postulante['id']) ?>">
+            <button type="submit" class="btn btn-warning">
+                Generar cuenta por cobrar
+            </button>
+        </form>
+    <?php endif; ?>
+</div>
+
+<div class="card shadow-sm">
     <div class="card-header">
-        Pagos registrados
+        Historial de pagos
     </div>
 
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover align-middle">
-                <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Código</th>
-                        <th>Tipo</th>
-                        <th>Monto</th>
-                        <th>Fecha pago</th>
-                        <th>Referencia</th>
-                        <th>Comprobante</th>
-                        <th>Estado actual</th>
-                        <th width="220">Actualizar estado</th>
-                    </tr>
-                </thead>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Tipo</th>
+                    <th>Monto</th>
+                    <th>Fecha</th>
+                    <th>Referencia</th>
+                    <th>Comprobante</th>
+                    <th>Estado</th>
+                    <th>Cambiar estado</th>
+                </tr>
+            </thead>
 
-                <tbody>
-                    <?php if (!empty($pagos)): ?>
-                        <?php foreach ($pagos as $pago): ?>
-                            <?php
-                                $estadoPago = $pago['estado'] ?? 'Pendiente';
-                                $badgePago = 'bg-secondary';
+            <tbody>
+                <?php if (!empty($pagos)): ?>
+                    <?php foreach ($pagos as $pago): ?>
+                        <?php
+                            $tipoPago = trim((string)($pago['tipo_pago'] ?? ''));
+                            $esQR = strtolower($tipoPago) === 'qr';
+                        ?>
 
-                                if ($estadoPago === 'Aceptado') {
-                                    $badgePago = 'bg-success';
-                                } elseif ($estadoPago === 'Pendiente') {
-                                    $badgePago = 'bg-warning text-dark';
-                                } elseif ($estadoPago === 'Rechazado') {
-                                    $badgePago = 'bg-danger';
-                                }
-                            ?>
-
-                            <tr>
-                                <td><?= e($pago['id']) ?></td>
-                                <td><?= e($pago['codigo']) ?></td>
-                                <td><?= e($pago['tipo_pago'] ?: 'Sin tipo') ?></td>
-                                <td>
-                                    Bs <?= e(number_format((float)$pago['monto'], 2, ',', '.')) ?>
-                                </td>
-                                <td><?= e(format_date($pago['fecha_pago'])) ?></td>
-                                <td><?= e($pago['referencia'] ?: '-') ?></td>
-                                <td><?= e($pago['comprobante'] ?: '-') ?></td>
-                                <td>
-                                    <span class="badge <?= e($badgePago) ?>">
-                                        <?= e($estadoPago) ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <form action="<?= e(url('/pagos/cambiar-estado')) ?>" method="POST">
-                                        <input type="hidden" name="pago_id" value="<?= e($pago['id']) ?>">
-                                        <input type="hidden" name="postulante_id" value="<?= e($postulante['id']) ?>">
-
-                                        <div class="input-group input-group-sm">
-                                            <select name="estado" class="form-select" required>
-                                                <?php foreach ($estadosPago as $estado): ?>
-                                                    <option
-                                                        value="<?= e($estado) ?>"
-                                                        <?= selected_value($estadoPago, $estado) ?>
-                                                    >
-                                                        <?= e($estado) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-
-                                            <button type="submit" class="btn btn-primary">
-                                                Guardar
-                                            </button>
-                                        </div>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
                         <tr>
-                            <td colspan="9" class="text-center text-muted">
-                                Este postulante todavía no tiene pagos registrados.
+                            <td><?= e($pago['codigo']) ?></td>
+
+                            <td>
+                                <?php if ($esQR): ?>
+                                    <span class="badge bg-primary">QR</span>
+                                    <div class="small text-muted">Pasarela simulada</div>
+                                <?php else: ?>
+                                    <?= e($tipoPago ?: '-') ?>
+                                <?php endif; ?>
+                            </td>
+
+                            <td><?= e(number_format((float)$pago['monto'], 2, ',', '.')) ?> Bs</td>
+
+                            <td><?= e(format_date($pago['fecha_pago'])) ?></td>
+
+                            <td>
+                                <?= e($pago['referencia'] ?: '-') ?>
+
+                                <?php if ($esQR && !empty($pago['referencia'])): ?>
+                                    <div class="small text-muted">
+                                        Referencia generada por QR
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+
+                            <td>
+                                <?= e($pago['comprobante'] ?: '-') ?>
+
+                                <?php if ($esQR): ?>
+                                    <div class="small text-muted">
+                                        Comprobante de pasarela QR
+                                    </div>
+                                <?php endif; ?>
+                            </td>
+
+                            <td>
+                                <?php if ($pago['estado'] === 'Aceptado'): ?>
+                                    <span class="badge bg-success">Aceptado</span>
+                                <?php elseif ($pago['estado'] === 'Rechazado'): ?>
+                                    <span class="badge bg-danger">Rechazado</span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">Pendiente</span>
+                                <?php endif; ?>
+                            </td>
+
+                            <td>
+                                <form action="<?= e(url('/pagos/cambiar-estado')) ?>" method="POST" class="d-flex gap-2">
+                                    <input type="hidden" name="pago_id" value="<?= e($pago['id']) ?>">
+                                    <input type="hidden" name="postulante_id" value="<?= e($postulante['id']) ?>">
+
+                                    <select name="estado" class="form-select form-select-sm">
+                                        <?php foreach ($estadosPago as $estado): ?>
+                                            <option value="<?= e($estado) ?>" <?= selected_value($pago['estado'], $estado) ?>>
+                                                <?= e($estado) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        Guardar
+                                    </button>
+                                </form>
                             </td>
                         </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            No existen pagos registrados para este postulante.
+                        </td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
 </div>

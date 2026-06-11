@@ -6,10 +6,11 @@ use PDO;
 use Exception;
 
 require_once __DIR__ . '/Conexion.php';
+require_once __DIR__ . '/PeriodoAcademico.php';
 
 class GrupoAcademico
 {
-    public const CAPACIDAD_AULA = 60;
+    public const DIVISOR_CALCULO_GRUPOS = 80;
 
     private static function db()
     {
@@ -60,7 +61,6 @@ class GrupoAcademico
         ";
 
         $stmt = self::db()->query($sql);
-
         return $stmt->fetchAll();
     }
 
@@ -100,8 +100,8 @@ class GrupoAcademico
             }
         }
 
-        $gruposNecesariosCapacidad60 = $totalInscritos > 0
-            ? (int)ceil($totalInscritos / self::CAPACIDAD_AULA)
+        $gruposNecesariosDivisor80 = $totalInscritos > 0
+            ? (int)ceil($totalInscritos / self::DIVISOR_CALCULO_GRUPOS)
             : 0;
 
         $porcentajeGeneral = $capacidadTotal > 0
@@ -109,7 +109,7 @@ class GrupoAcademico
             : 0;
 
         return [
-            'capacidad_aula' => self::CAPACIDAD_AULA,
+            'divisor_calculo_grupos' => self::DIVISOR_CALCULO_GRUPOS,
             'total_grupos' => $totalGrupos,
             'total_inscritos' => $totalInscritos,
             'capacidad_total' => $capacidadTotal,
@@ -118,9 +118,90 @@ class GrupoAcademico
             'grupos_saturados' => $gruposSaturados,
             'grupos_inactivos' => $gruposInactivos,
             'grupos_cerrados' => $gruposCerrados,
-            'grupos_necesarios_capacidad_60' => $gruposNecesariosCapacidad60,
+            'grupos_necesarios_divisor_80' => $gruposNecesariosDivisor80,
             'porcentaje_general' => $porcentajeGeneral,
         ];
+    }
+
+    public static function obtenerPeriodos()
+    {
+        return PeriodoAcademico::obtenerTodos();
+    }
+
+    public static function crear($datos)
+    {
+        $codigo = strtoupper(trim((string)($datos['codigo'] ?? '')));
+        $nombre = trim((string)($datos['nombre'] ?? ''));
+        $capacidad = (int)($datos['capacidad'] ?? 70);
+        $periodoId = (int)($datos['periodo_id'] ?? 0);
+        $estado = trim((string)($datos['estado'] ?? 'Activo'));
+
+        if ($codigo === '') {
+            throw new Exception('El código del grupo es obligatorio.');
+        }
+
+        if ($nombre === '') {
+            throw new Exception('El nombre del grupo es obligatorio.');
+        }
+
+        if ($capacidad <= 0) {
+            throw new Exception('La capacidad debe ser mayor a cero.');
+        }
+
+        if ($periodoId <= 0 || !PeriodoAcademico::buscarPorId($periodoId)) {
+            throw new Exception('Debes seleccionar una gestión válida.');
+        }
+
+        if (!in_array($estado, self::estadosValidos(), true)) {
+            throw new Exception('El estado seleccionado no es válido.');
+        }
+
+        if (self::existeCodigo($codigo)) {
+            throw new Exception('Ya existe un grupo con ese código.');
+        }
+
+        $sql = "
+            INSERT INTO grupo (
+                codigo,
+                nombre,
+                capacidad,
+                cantidad_estudiantes,
+                estado,
+                periodo_id
+            ) VALUES (
+                :codigo,
+                :nombre,
+                :capacidad,
+                0,
+                :estado,
+                :periodo_id
+            )
+        ";
+
+        $stmt = self::db()->prepare($sql);
+
+        return $stmt->execute([
+            ':codigo' => $codigo,
+            ':nombre' => $nombre,
+            ':capacidad' => $capacidad,
+            ':estado' => $estado,
+            ':periodo_id' => $periodoId,
+        ]);
+    }
+
+    public static function existeCodigo($codigo)
+    {
+        $sql = "
+            SELECT COUNT(*)
+            FROM grupo
+            WHERE LOWER(codigo) = LOWER(:codigo)
+        ";
+
+        $stmt = self::db()->prepare($sql);
+        $stmt->bindValue(':codigo', trim((string)$codigo));
+        $stmt->execute();
+
+        return (int)$stmt->fetchColumn() > 0;
     }
 
     public static function sincronizarCantidadEstudiantes()
